@@ -6,6 +6,7 @@ import Profile from "./pages/Profile";
 import Navbar from "./pages/Navbar";
 import Footer from "./pages/Footer";
 import EditProfile from "./pages/EditProfile";
+import AppliedJobs from "./pages/AppliedJobs";
 import Connections from "./pages/Connections";
 import Jobs from "./pages/Jobs";
 import './App.css';
@@ -63,9 +64,14 @@ function App() {
       case "/jobs":
         title = "Jobs";
         metaDescription = "Find and apply for jobs.";
+      // case "/appliedjobs":
+      //   title = "Applied Jobs";
+      //   metaDescription = "View jobs you have applied for.";
+      //   break;
       default:
         title = "App";
         metaDescription = "App description.";
+
     }
 
     if (title) {
@@ -96,6 +102,8 @@ function App() {
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/recruiterslist" element={<RecruiterTable/>} />
           <Route path="/jobform" element={<JobForm />} />
+          <Route path="/applyjob" element={<AppliedJobs />} />
+          
         </Routes>
         {/* <UserReports/> */}
         {/* <RecruiterTable/> */}

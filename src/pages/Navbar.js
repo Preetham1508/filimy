@@ -4,9 +4,24 @@ import "./Navbar.css";
 import { logincontext } from "../contexts/Logincontext";
 import { useContext } from "react";
 
+
+const Logoutuser = () => {
+  localStorage.removeItem("LoggedInUser"); // Remove from localStorage
+  setCurrentUser(null); // Clear user from state
+};
+
 const Navbar = () => {
-  const [currentuser, loginerror, UserloginStatus, Loginuser, Logoutuser, isUser, isRecruiter, isAdmin] = useContext(logincontext);
+  const [currentuser, loginerror, UserloginStatus, Loginuser, isUser, isRecruiter, isAdmin] = useContext(logincontext);
   console.log(currentuser, UserloginStatus);
+
+
+  
+
+  const handleLogout = () => {
+    Logoutuser();
+    navigate("/"); // Navigate after logout
+  };
+
 
   return (
     <nav className="navbar">
@@ -22,6 +37,7 @@ const Navbar = () => {
                 <Link to="/profile" className="navbar-link">Profile</Link>
                 <Link to="/connections" className="navbar-link">Connections</Link>
                 <Link to="/jobs" className="navbar-link">Jobs</Link>
+                <Link to="/applyjob" className="navbar-link">Applied Jobs</Link>
               </>
             )}
               {/* Conditional rendering based on user role */}
@@ -38,7 +54,9 @@ const Navbar = () => {
                 </>
               )} */}
 
-              <Link to="/" onClick={Logoutuser} className="navbar-link">Logout</Link>
+              <Link to="#" onClick={handleLogout} className="navbar-link">Logout</Link>
+                    
+                
             </>
           ) : (
             <>
