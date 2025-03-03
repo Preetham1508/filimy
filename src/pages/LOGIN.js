@@ -172,7 +172,17 @@ const LOGIN = () => {
       const response = await axios.post('http://127.0.0.1:5000/login', formData);
       console.log('Login Success:', response.data);
 
-      if (response.data.user.role=="user") navigate('/profile'); else if(response.data.user.role=="recruiter") navigate('/jobform'); else if(response.data.user.role=="admin")
+      if (response.data.user.role=="user") 
+        {
+
+            //localStorage.setItem("LoggedInUser", JSON.stringify(response.data.user)); 
+            localStorage.setItem("LoggedInUser", JSON.stringify({ email: response.data.user.email }));
+            console.log(response.data.user);
+
+          navigate('/profile');
+
+        }
+       else if(response.data.user.role=="recruiter") navigate('/jobform'); else if(response.data.user.role=="admin")
       navigate('/recruiterslist');    } catch (error) {
       if (error.response) {
         setErrors((prevErrors) => ({ ...prevErrors, form: error.response.data.error }));

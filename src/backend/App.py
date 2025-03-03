@@ -5,7 +5,7 @@ from pymongo import MongoClient, errors
 import google.generativeai as genai
 import time
 import json
-
+from bson import ObjectId
 
 app = Flask(__name__)
 # CORS(app)
@@ -24,11 +24,19 @@ except errors.ConnectionFailure:
     print("Failed to connect to the database.")
 
 db = client['RealTimeDataAnalysiss']
+
+collection_name = "applied_jobs"
+if collection_name not in db.list_collection_names():
+    db.create_collection(collection_name)
+    print(f"Collection '{collection_name}' created.")
+
+
+
 users_collection = db['profiles_ind']
 recruiter_check_collection = db['checklist']
 recruiter_collection = db['recruiters']
 jobs = db['companies']
-
+appliedjobs_collection = db[collection_name]
 
 # @app.route('/signup', methods=['POST'])
 # def signup():
@@ -192,7 +200,6 @@ def login():
     if role=="admin":
         return jsonify({'message': 'Login successful', 'user': {'role': "admin"}}), 200
         
-
     print(data)
     
    
@@ -590,6 +597,166 @@ def post_job():
         return jsonify({"message": "Job posted successfully!"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    
+
+# @app.route("/appliedjobs/<user_id>", methods=["GET"])
+# def get_applied_jobs(user_id):
+#     """
+#     Retrieve all applied jobs for a given user ID.
+#     """
+#     try:
+#         # Convert user_id to ObjectId if necessary
+#         user_id = ObjectId(user_id)
+#     except Exception:
+#         return jsonify({"message": "Invalid user_id format"}), 400
+
+#     # Fetch jobs where 'user_id' matches
+#     user_jobs = list(appliedjobs_collection.find({'user_id': user_id}, {"_id": 0}))  # Exclude MongoDB ID from response
+
+#     if not user_jobs:
+#         return jsonify({"message": "No applied jobs found for this user."}), 404
+
+#     return jsonify(user_jobs), 200
+
+# @app.route('/applyjob', methods=['POST'])
+# def apply_job():
+#     data = request.json
+#     email = data.get("email")
+#     job_id = data.get("job_id")
+#     company = data.get("company")
+#     role = data.get("role")
+
+#     if not email or not job_id:
+#         return jsonify({"message": "Missing email or job_id"}), 400
+
+#     # Retrieve user_id from email
+#     user = users_collection.find_one({"email": email})
+#     if not user:
+#         return jsonify({"message": "User not found"}), 404
+
+#     user_id = str(user["_id"])  # Convert ObjectId to string
+
+#     # Check if the user already applied for this job
+#     existing_application = appliedjobs_collection.find_one({
+#         "user_id": user_id,
+#         "job_id": job_id
+#     })
+
+#     if existing_application:
+#         return jsonify({"message": "You have already applied for this job!"}), 409
+
+#     # Insert new job application
+#     new_application = {
+#         "user_id": user_id,
+#         "job_id": job_id,
+#         "company": company,
+#         "role": role,
+#         "applied_on": datetime.utcnow()  # Store application timestamp
+#     }
+#     appliedjobs_collection.insert_one(new_application)
+
+#     return jsonify({"message": "Successfully applied for the job!"}), 201
+
+# @app.route('/applyjob', methods=['POST'])
+# def apply_job():
+#     try:
+#         data = request.get_json()  # Ensure JSON data is extracted properly
+#         print("Received Data:", data)  # Debugging log
+
+#         email = data.get("email")
+       
+#         company = data.get("company")
+#         role = data.get("role")
+
+#         if not email :
+#             return jsonify({"message": "Missing email or job_id"}), 400
+
+#         # Check if the user already applied for this job
+#         existing_application = appliedjobs_collection.find_one({
+#             "email": email,
+            
+#         })
+
+#         if existing_application:
+#             return jsonify({"message": "You have already applied for this job!"}), 409
+
+#         # Insert new job application
+#         new_application = {
+#             "email": email,
+           
+#             "company": company,
+#             "role": role,
+#             "applied_on": datetime.utcnow()
+#         }
+#         appliedjobs_collection.insert_one(new_application)
+
+#         return jsonify({"message": "Successfully applied for the job!"}), 201
+
+#     except Exception as e:
+#         print("Error processing request:", str(e))
+#         return jsonify({"message": "Server error"}), 500
+
+
+
+@app.route('/applyjob', methods=['POST'])
+def apply_job():
+    try:
+        data = request.get_json()  # Extract JSON payload
+        print("Received Data:", data)  # Debugging log
+
+        email = data.get("email")
+        company = data.get("company")
+        role = data.get("role")
+
+        if not email or not company or not role:
+            return jsonify({"message": "Missing email, company, or role"}), 400
+
+        # Check if the user already applied for this job
+        existing_application = appliedjobs_collection.find_one({
+            "email": email,
+            "company": company,
+            "role": role
+        })
+
+        if existing_application:
+            return jsonify({"message": "You have already applied for this job!"}), 409
+
+        # Insert new job application
+        new_application = {
+            "email": email,
+            "company": company,
+            "role": role,
+            
+        }
+        appliedjobs_collection.insert_one(new_application)
+
+        return jsonify({"message": "Successfully applied for the job!"}), 201
+
+    except Exception as e:
+        print("Error processing request:", str(e))
+        return jsonify({"message": "Server error"}), 500
+
+
+@app.route('/appliedjobs/<email>', methods=['GET'])
+def get_applied_jobs(email):
+    try:
+        print("Email received:", email)  # Debugging print
+
+        if not email:
+            return jsonify({"message": "Missing email"}), 400
+
+        # Fetch all jobs applied by the user and remove _id field
+        applied_jobs = list(appliedjobs_collection.find({"email": email}, {"_id": 0}))
+
+        return jsonify(applied_jobs), 200
+
+    except Exception as e:
+        print("Error fetching applied jobs:", str(e))
+        return jsonify({"message": "Server error"}), 500
+
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    app.run(debug=True)
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
