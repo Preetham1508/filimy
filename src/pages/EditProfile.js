@@ -314,21 +314,48 @@ const EditProfile = () => {
         });
     };
 
+    // const handleSubmit = async (e) => {
+    //     e.preventDefault();
+    //     try {
+    //         const filteredData = Object.keys(formData)
+    //             .filter(key => formData[key] !== null && formData[key] !== '')
+    //             .reduce((obj, key) => {
+    //                 obj[key] = formData[key];
+    //                 return obj;
+    //             }, {});
+
+    //         await axios.post('http://127.0.0.1:5000/editprofile', {
+    //             email: currentuser.email,
+    //             data: filteredData
+    //         });
+
+    //         alert("Saved changes successfully!");
+    //         navigate("/profile");
+    //     } catch (error) {
+    //         console.error('Error updating profile:', error);
+    //         alert("Failed to save changes. Please try again.");
+    //     }
+    // };
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            console.log("Form Data before submission:", formData); // Debugging
+    
             const filteredData = Object.keys(formData)
-                .filter(key => formData[key] !== null && formData[key] !== '')
+                .filter(key => formData[key] !== null && formData[key] !== '' && formData[key].length > 0)
                 .reduce((obj, key) => {
                     obj[key] = formData[key];
                     return obj;
                 }, {});
-
-            await axios.post('http://127.0.0.1:5000/editprofile', {
+    
+            console.log("Filtered Data:", filteredData); // Debugging
+    
+            const response = await axios.post('http://127.0.0.1:5000/editprofile', {
                 email: currentuser.email,
                 data: filteredData
             });
-
+    
+            console.log('Profile updated successfully:', response.data);
             alert("Saved changes successfully!");
             navigate("/profile");
         } catch (error) {
@@ -336,6 +363,7 @@ const EditProfile = () => {
             alert("Failed to save changes. Please try again.");
         }
     };
+    
 
     return (
         <div className="edit-profile-page">

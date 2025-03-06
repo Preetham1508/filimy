@@ -3,9 +3,30 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 from pymongo import MongoClient, errors
 import google.generativeai as genai
-import time
 import json
-from bson import ObjectId
+
+
+import time  
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service  
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+# ChromeDriver path
+path = "C:/Users/preet/MajorProject/Project_Major/public/chromedriver.exe"
+
+# Set up Chrome options for headless mode
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Run in headless mode (no UI)
+chrome_options.add_argument("--disable-gpu")  # Fixes potential issues on Windows
+chrome_options.add_argument("--no-sandbox")  # Bypass OS security model
+chrome_options.add_argument("--disable-dev-shm-usage")  # Prevents shared memory issues
+
+# Initialize WebDriver
+service = Service(path)
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
 app = Flask(__name__)
 # CORS(app)
@@ -30,52 +51,11 @@ if collection_name not in db.list_collection_names():
     db.create_collection(collection_name)
     print(f"Collection '{collection_name}' created.")
 
-
-
 users_collection = db['profiles_ind']
 recruiter_check_collection = db['checklist']
 recruiter_collection = db['recruiters']
 jobs = db['companies']
 appliedjobs_collection = db[collection_name]
-
-# @app.route('/signup', methods=['POST'])
-# def signup():
-    # data = request.get_json()
-    # # print(data)
-
-    # # Retrieve form data
-    # first_name = data.get('first_name')
-    # last_name = data.get('last_name')
-    # email = data.get('email')
-    # password = data.get('password')
-    # confirm_password = data.get('confirm_password')
-  
-
-    # # Additional fields for recruiter
-    
-    # # Check if the email already exists
-    # if users_collection.find_one({'email': email}):
-    #     return jsonify({'error': 'User already exists'}), 409
-
-    # # Hash the password
-    # password_hash = password
-
-    # # Create common user data with rolec
-    # user_data = {
-    #     'firstname': first_name,
-    #     'lastname': last_name,
-    #     'email': email,
-    #     'password': password_hash,
-        
-    # }
-  
-    # users_collection.insert_one(user_data)  # Insert user into UsersDetails
-
-    # # Insert the common user data into the users collection
-
-
-    # return jsonify({'message': 'User created successfully'}), 201
-
 
 @app.route('/signup', methods=['POST'])
 def signup():
@@ -150,44 +130,6 @@ def signup():
 
 
 global_mail=""
-# @app.route('/login', methods=['POST'])
-# def login():
-#     global global_mail
-#     data = request.get_json()
-#     email = data.get('mail')
-#     global_mail = email
-#     password = data.get('password')
-    
-#     # Check if email, password, and role are provided
-#     if not email or not password:
-#         return jsonify({'error': 'email, password, and role are required'}), 400
-    
-    
-    
-#     # Find the user by email
-    
-#     user = users_collection.find_one({'email': email})
-    
-#     # Check if the user exists, if password is correct, and if the role matches
-#     if not user:
-#         return jsonify({'error': 'Invalid credentials'}), 401
-    
-#     if user["password"]!=password:
-#         return jsonify({'error': 'Invalid credentials'}), 401
-    
-   
-#     # Login successful
-#     return jsonify({
-#         'message': 'Login successful', 
-#         'user': {
-#             'firstname': user['firstname'], 
-#             'lastname': user['lastname'], 
-#             'email': user['email'], 
-#         }
-#     }), 200
-    
-    
-
 @app.route('/login', methods=['POST'])
 def login():
     global global_mail
@@ -200,6 +142,7 @@ def login():
     if role=="admin":
         return jsonify({'message': 'Login successful', 'user': {'role': "admin"}}), 200
         
+
     print(data)
     
    
@@ -259,99 +202,158 @@ def get_profile():
         return jsonify({'data':user})
     else:
         return jsonify({'error': 'User not found'})
-    
+
+
 # @app.route('/editprofile', methods=['POST'])
 # def edprofile():
 #     data = request.get_json()
+#     print("Received Data:", data)  # Debugging: Check if data is received
 #     email = data.get('email')
 #     update_data = data.get('data')
-#     print(update_data)
+    
+#     if not email or not update_data:
+#         return jsonify({'error': 'Invalid request, missing email or data'}), 400
+
 #     update_data = {k: v for k, v in update_data.items() if v is not None}
+
 #     user_data = users_collection.find_one({'email': email})
-#     for data in update_data:
-#         if data not in user_data:
-#             user_data[data] = update_data[data]
-#         if data =="education":
-#             for edu in update_data[data]:
-#                 if edu['graduatedyear']!='':
-#                     if edu not in user_data[data]:
-#                         user_data[data].append(edu)
-#         elif data =="companies":
-#             for company in update_data[data]:
-#                 if company['name']!='':
-#                     if company not in user_data[data]:
-#                         user_data[data].append(company) 
-#         elif data=="skills":
-#             if update_data[data]!='':
-#                 l=update_data[data]
-#                 for i in l:
-#                     chk=0
-#                     for j in user_data[data]:
-#                         if i.lower()==j.lower():
-#                             chk=1
-#                             break
-#                     if chk==0:
-#                         user_data[data].append(i)
+
+#     if not user_data:
+#         return jsonify({'error': 'User not found'}), 404
+
+#     # Ensure required fields exist
+#     for key in ['education', 'companies', 'skills']:
+#         if key not in user_data or not isinstance(user_data[key], list):
+#             user_data[key] = []
+
+#     for field, value in update_data.items():
+#         if field == "photo":
+#             user_data['photo'] = value
+#         elif field == "education":
+#             for edu in value:
+#                 if edu['graduatedyear'] != '':
+#                     if edu not in user_data['education']:
+#                         user_data['education'].append(edu)
+#         elif field == "companies":
+#             for company in value:
+#                 if company['name'] != '':
+#                     if company not in user_data['companies']:
+#                         user_data['companies'].append(company)
+#         elif field == "skills":
+#             if value:
+#                 for skill in value:
+#                     if skill.lower() not in map(str.lower, user_data['skills']):
+#                         user_data['skills'].append(skill)
 #         else:
-#             if update_data[data]!='':
-#                 user_data[data] = update_data[data]                    
-        
-#     if not update_data:
-#         return jsonify({'error': 'No valid fields to update'})
+#             user_data[field] = value if value != '' else user_data.get(field)
+
 #     try:
 #         result = users_collection.update_one({'email': email}, {'$set': user_data})
 #         if result.modified_count == 0:
-#             return jsonify({'error': 'No profile found to update'})
-#         return jsonify({'message': 'Profile updated successfully'})
+#             return jsonify({'error': 'No profile found to update'}), 400
+#         return jsonify({'message': 'Profile updated successfully'}), 200
 #     except Exception as e:
-#         # print(f"Error updating profile: {e}")
-#         return jsonify({'error': 'An error occurred while updating the profile'})
+#         return jsonify({'error': f'An error occurred while updating the profile: {str(e)}'}), 500
 
+import requests
 
 @app.route('/editprofile', methods=['POST'])
 def edprofile():
     data = request.get_json()
+    print("Received Data:", data)  # Debugging: Check received data
+
     email = data.get('email')
     update_data = data.get('data')
+
+    if not email or not update_data:
+        return jsonify({'error': 'Invalid request, missing email or data'}), 400
+
     update_data = {k: v for k, v in update_data.items() if v is not None}
 
     user_data = users_collection.find_one({'email': email})
 
+    if not user_data:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Ensure required fields exist and follow the expected format
+    default_structure = {
+        "education": [],
+        "companies": [],
+        "skills": [],
+        "location": {"lat": "", "lon": "", "address": ""}
+    }
+
+    for key, default_value in default_structure.items():
+        if key not in user_data:
+            user_data[key] = default_value
+
     for field, value in update_data.items():
         if field == "photo":
-            # Ensure photo is a Base64 string
             user_data['photo'] = value
         elif field == "education":
             for edu in value:
-                if edu['graduatedyear'] != '':
-                    if edu not in user_data[field]:
-                        user_data[field].append(edu)
+                if edu.get('graduatedyear'):
+                    try:
+                        edu['graduatedyear'] = int(edu['graduatedyear'])  # Convert to int
+                    except ValueError:
+                        continue  # Skip if conversion fails
+                    if edu not in user_data['education']:
+                        user_data['education'].append(edu)
         elif field == "companies":
             for company in value:
-                if company['name'] != '':
-                    if company not in user_data[field]:
-                        user_data[field].append(company)
+                if company.get('name'):
+                    if 'experience' in company:
+                        try:
+                            company['experience'] = int(company['experience'])  # Convert to int
+                        except ValueError:
+                            continue  # Skip if conversion fails
+                    if company not in user_data['companies']:
+                        user_data['companies'].append(company)
         elif field == "skills":
-            if value != '':
+            if value:
                 for skill in value:
-                    if skill.lower() not in map(str.lower, user_data[field]):
-                        user_data[field].append(skill)
+                    if skill.lower() not in map(str.lower, user_data['skills']):
+                        user_data['skills'].append(skill)
+        elif field == "address":
+            location_data = get_coordinates_osm(value)
+            if "error" in location_data:
+                location_data = {"latitude": "18.9057181", "longitude": "78.5832738"}  # Default location
+            
+            user_data['location'] = {
+                "lat": f"{float(location_data['latitude']):.4f}",  # Round to 4 decimal places
+                "lon": f"{float(location_data['longitude']):.4f}",
+                "address": value
+            }
         else:
             user_data[field] = value if value != '' else user_data.get(field)
-
-    if not update_data:
-        return jsonify({'error': 'No valid fields to update'})
 
     try:
         result = users_collection.update_one({'email': email}, {'$set': user_data})
         if result.modified_count == 0:
-            return jsonify({'error': 'No profile found to update'})
-        return jsonify({'message': 'Profile updated successfully'})
+            return jsonify({'error': 'No profile found to update'}), 400
+        return jsonify({'message': 'Profile updated successfully'}), 200
     except Exception as e:
-        return jsonify({'error': f'An error occurred while updating the profile: {str(e)}'})
+        return jsonify({'error': f'An error occurred while updating the profile: {str(e)}'}), 500
 
 
+# Function to get coordinates from OpenStreetMap API
+def get_coordinates_osm(address):
+    if not address:
+        return {"error": "Address is required"}
     
+    url = f"https://nominatim.openstreetmap.org/search?q={address}&format=json&limit=1"
+    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    
+    if response.status_code == 200 and response.json():
+        location = response.json()[0]
+        return {
+            "latitude": f"{float(location['lat']):.4f}",  # Round lat to 4 decimal places
+            "longitude": f"{float(location['lon']):.4f}"  # Round lon to 4 decimal places
+        }
+    else:
+        return {"latitude": "18.9057181", "longitude": "78.5832738"}  # Default coordinates
+  
+
 import math
 from pymongo import MongoClient
 import time
@@ -429,10 +431,9 @@ def calculate_distances_for_all_users(main_user,users):
         #                               float(user['location']['lat']), float(user['location']['lon']))
         priority.append(calculate_priority(main_user, user))
         des=[float(user['location']['lat']),float(user['location']['lon'])]
+        distances.append(haversine_distance(origin[0],origin[1],des[0],des[1]))        
+        print(len(distances),len(priority))
 
-        distances.append(haversine_distance(origin[0],origin[1],des[0],des[1]))
-        
-  
        
     return distances,priority
 
@@ -441,8 +442,8 @@ def gmain(email):
     # start_time = time.time()
 
     # MongoDB connection
-    client = MongoClient('mongodb+srv://suryatejaaiproject:ZgQ7ACyPHcVUyHW2@cluster0.atwu66p.mongodb.net/')
-    db = client['RealTimeDataAnalysis']
+    client = MongoClient('mongodb+srv://vinaysunkara:vinaysunkara@cluster0.snpbn.mongodb.net/?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true')
+    db = client['RealTimeDataAnalysiss']
     collection = db['profiles_ind']
     
     # Fetch all users
@@ -451,10 +452,13 @@ def gmain(email):
     main_user = collection.find_one({'email': email})
     # print(main_user)
     # main_user={"_id":{"$oid":"672282bc1e5d932bd8e85d71"},"firstname":"Anika","lastname":"Gupta","education":[{"degree":"B.Tech Computer Science","institution":"Indian Institute of Technology Delhi","graduatedyear":{"$numberInt":"2018"}},{"degree":"M.Tech Computer Science","institution":"Indian Institute of Technology Bombay","graduatedyear":{"$numberInt":"2020"}},{"degree":"PhD Computer Science","institution":"Indian Institute of Science","graduatedyear":{"$numberInt":"2024"}}],"companies":[{"name":"Google India","position":"Software Engineer","experience":{"$numberInt":"3"}},{"name":"Amazon India","position":"Senior Software Engineer","experience":{"$numberInt":"2"}},{"name":"Microsoft India","position":"Software Development Manager","experience":{"$numberInt":"1"}}],"skills":["Java","Python","Cloud Computing","AWS","Azure","DevOps"],"location":{"lat":"28.6139","lon":"77.2090","address":"New Delhi"}}
+    if not main_user:  # If user is not found, return an empty list or error
+        print(f"No user found for email: {email}")
+        return []
+    valid_users = [user for user in users if "location" in user]
+    distances,priority = calculate_distances_for_all_users(main_user,valid_users)
 
-    distances,priority = calculate_distances_for_all_users(main_user,users)
-
-    # print(len(distances),len(priority),len(users))
+    print(len(distances),len(priority),len(users))
 
     sorted_users=[]
     for i in range(len(users)-1):
@@ -474,35 +478,48 @@ def gmain(email):
 
 
 from bson import ObjectId
-
 # @app.route('/usersrec', methods=['POST'])
 # def fun():
 #     data = request.json  
-#     # print(data)
 #     email = data['params']['email']
 #     result = gmain(email)  # Assuming `gmain(email)` returns a list of MongoDB documents
     
 #     # Convert each document's ObjectId to a string
-#     for doc in result:
+#     for doc in result[:10]:  # Limit to 10 results
 #         if "_id" in doc:
 #             doc["_id"] = str(doc["_id"])
     
-#     # print(result)
-#     return jsonify(result)
+#     return jsonify(result[:10])  # Return only the first 10 results
 
 @app.route('/usersrec', methods=['POST'])
 def fun():
-    data = request.json  
-    email = data['params']['email']
-    result = gmain(email)  # Assuming `gmain(email)` returns a list of MongoDB documents
-    
-    # Convert each document's ObjectId to a string
-    for doc in result[:10]:  # Limit to 10 results
-        if "_id" in doc:
-            doc["_id"] = str(doc["_id"])
-    
-    return jsonify(result[:10])  # Return only the first 10 results
+    try:
+        data = request.json
+        print("Received Data:", data)  # Debugging
+        
+        if not data or 'params' not in data or 'email' not in data['params']:
+            return jsonify({"error": "Invalid request format"}), 400
+        
+        email = data['params']['email']
+        print("Email:", email)
 
+        result = gmain(email)  # Ensure gmain(email) is not throwing an error
+        print("Raw result:", result)
+
+        if not isinstance(result, list):
+            return jsonify({"error": "gmain did not return a list"}), 500
+
+        # Convert ObjectId to string
+        for doc in result[:10]:  
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+        
+        print("Processed result:", result[:10])  # Debugging
+        return jsonify(result[:10])  
+
+    except Exception as e:
+        print("Error:", str(e))  # Print full error to backend logs
+        return jsonify({"error": str(e)}), 500
 
 g_apikey = "AIzaSyA2vsEVR7to4-1aUzEcMuTlTXG5-UaJRII"
 genai.configure(api_key=g_apikey)
@@ -523,14 +540,6 @@ def funnn():
     while cnt<=len(l):
         response = model.generate_content(str(l[st:cnt])+"""\n\n\nfor the above all 15 job description rate the below candidate out of 100 by considering skills, past experience and education of the candidate. If the eligibility criteria is not met by the candidate give rating as 0  in the given format:\n\n {{"_id":{"$oid":"6727856bfd969e51f45506de"},'rating':int},{..},..}, \n\n\n"""+ str(user))
         score = json.loads(response.text)
-        # print(response.text)
-        # print(score)
-        # for i in range(15):
-        #     jd = l[i]
-        #     response = model.generate_content(str(jd)+"""\n\n\nfor the above job description rate the below candidate out of 5 by considering skills, past experience and education of the candidate. If the eligibility criteria is not met by the candidate give rating as 0  in the given format:\n\n{'rating':int, 'parameters':{'str':'int',etc..}, 'factors':{'str','str',etc...}}\n\n\n"""+ str(user))
-        #     score = json.loads(response.text)
-        #     rating = score['rating']
-        #     lst.append([rating,i])
         k=st
         for i in score:
             sc=int(i['rating'])
@@ -558,8 +567,155 @@ def funnn():
     # print(ans)
     return jsonify(ans)
 
+def scrape_microsoft_jobs(skills):  
+    try:
+        driver.get('https://jobs.careers.microsoft.com/global/en/search')
+        path_prefix = 'https://jobs.careers.microsoft.com/global/en/job/'
 
+        # Wait for page to load completely
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Search by job title, ID, or keyword']"))
+        )
 
+        search_box = driver.find_element(By.XPATH, "//input[@placeholder='Search by job title, ID, or keyword']")
+        input_box = driver.find_element(By.XPATH, "//input[@placeholder='City, state, or country/region']")
+        
+        # Clear existing text before entering new text
+        search_box.clear()
+        search_box.send_keys(skills)
+        input_box.clear()
+        input_box.send_keys("India")
+        
+        # Wait for button to be clickable before clicking
+        button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[@aria-label='Find jobs']"))
+        )
+        button.click()
+        
+        # Increased wait time for results to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label^='Job item']"))
+        )
+        
+        # Add a short pause to ensure dynamic content is fully loaded
+        time.sleep(2)
+
+        jobs_list = []
+        jobs = driver.find_elements(By.CSS_SELECTOR, "[aria-label^='Job item']")
+        
+        for job in jobs:
+            try:
+                job_id = job.get_attribute('aria-label').replace("Job item ", "").strip()
+                title = job.find_element(By.TAG_NAME, "h2").text.strip()
+                job_url = f"{path_prefix}{job_id}/{title.replace(' ', '-')}"
+                # jobs_list.append(f'<a href="{job_url}" target="_blank">{title}</a>')
+                jobs_list.append({"title": title, "url": job_url})
+            except Exception as e:
+                print(f"Error processing Microsoft job: {e}")
+        
+        return jobs_list
+    except Exception as e:
+        print(f"Error in Microsoft job scraping: {e}")
+        return []  # Return empty list in case of error
+
+def scrape_oracle_jobs(skills):
+    try:
+        driver.get('https://careers.oracle.com/jobs/#en/sites/jobsearch/')
+
+        # Wait for page to load completely
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//input[@aria-label='Find jobs and events']"))
+        )
+
+        search_box = driver.find_element(By.XPATH, "//input[@aria-label='Find jobs and events']")
+        location_box = driver.find_element(By.XPATH, "//input[@placeholder='City, state, country']")
+        
+        # Clear existing text before entering new text
+        search_box.clear()
+        search_box.send_keys(skills)
+        location_box.clear()
+        location_box.send_keys("India")
+        
+        # Wait for button to be clickable before clicking
+        search_button = WebDriverWait(driver, 5).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[@title='Search for Jobs and Events']"))
+        )
+        search_button.click()
+
+        # Increased wait time for results to load
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "li[data-qa='searchResultItem']"))
+        )
+        
+        # Add a short pause to ensure dynamic content is fully loaded
+        time.sleep(2)
+
+        jobs_list = []
+        jobs = driver.find_elements(By.CSS_SELECTOR, "li[data-qa='searchResultItem']")
+        
+        for job in jobs:
+            try:
+                title = job.find_element(By.XPATH, ".//span[contains(@class, 'job-tile__title')]").text
+                job_url = job.find_element(By.TAG_NAME, "a").get_attribute("href")
+                jobs_list.append({"title": title, "url": job_url})
+                # jobs_list.append(f'<a href="{job_url}" target="_blank">{title}</a>')
+            except Exception as e:
+                print(f"Error processing Oracle job: {e}")
+        
+        return jobs_list
+    except Exception as e:
+        print(f"Error in Oracle job scraping: {e}")
+        return []  # Return empty list in case of error
+
+@app.route('/get-jobs', methods=['POST'])
+def get_jobs():
+    # Create a new driver instance for each request
+    path = "C:/Users/preet/MajorProject/Project_Major/public/chromedriver.exe"
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    driver = None
+    
+    try:
+        # Setup driver
+        service = Service(path)
+        driver = webdriver.Chrome(service=service, options=chrome_options)
+        
+        data = request.get_json()
+        email = data.get('email')
+        company = data.get("company", "").lower()
+
+        if not email:
+            return jsonify({"error": "Missing email parameter"}), 400
+
+        user = users_collection.find_one({'email': email})
+        if not user:
+            return jsonify({"error": "No user found with the given email"}), 400
+        
+        skills = ", ".join(user.get("skills", [])[:2])
+
+        if not company or not skills:
+            return jsonify({"error": "Missing company or skills parameter"}), 400
+
+        if company == "microsoft":
+            jobs = scrape_microsoft_jobs(skills)
+            print(jobs)
+        elif company == "oracle":
+            jobs = scrape_oracle_jobs(skills)
+        else:
+            return jsonify({"error": "Invalid company name"}), 400
+
+        return jsonify({"jobs": jobs})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        # Always close the driver when done
+        if driver:
+            driver.quit()
 
 @app.route('/recruiters', methods=['GET'])
 def get_recruiters():
@@ -597,106 +753,7 @@ def post_job():
         return jsonify({"message": "Job posted successfully!"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-# @app.route("/appliedjobs/<user_id>", methods=["GET"])
-# def get_applied_jobs(user_id):
-#     """
-#     Retrieve all applied jobs for a given user ID.
-#     """
-#     try:
-#         # Convert user_id to ObjectId if necessary
-#         user_id = ObjectId(user_id)
-#     except Exception:
-#         return jsonify({"message": "Invalid user_id format"}), 400
-
-#     # Fetch jobs where 'user_id' matches
-#     user_jobs = list(appliedjobs_collection.find({'user_id': user_id}, {"_id": 0}))  # Exclude MongoDB ID from response
-
-#     if not user_jobs:
-#         return jsonify({"message": "No applied jobs found for this user."}), 404
-
-#     return jsonify(user_jobs), 200
-
-# @app.route('/applyjob', methods=['POST'])
-# def apply_job():
-#     data = request.json
-#     email = data.get("email")
-#     job_id = data.get("job_id")
-#     company = data.get("company")
-#     role = data.get("role")
-
-#     if not email or not job_id:
-#         return jsonify({"message": "Missing email or job_id"}), 400
-
-#     # Retrieve user_id from email
-#     user = users_collection.find_one({"email": email})
-#     if not user:
-#         return jsonify({"message": "User not found"}), 404
-
-#     user_id = str(user["_id"])  # Convert ObjectId to string
-
-#     # Check if the user already applied for this job
-#     existing_application = appliedjobs_collection.find_one({
-#         "user_id": user_id,
-#         "job_id": job_id
-#     })
-
-#     if existing_application:
-#         return jsonify({"message": "You have already applied for this job!"}), 409
-
-#     # Insert new job application
-#     new_application = {
-#         "user_id": user_id,
-#         "job_id": job_id,
-#         "company": company,
-#         "role": role,
-#         "applied_on": datetime.utcnow()  # Store application timestamp
-#     }
-#     appliedjobs_collection.insert_one(new_application)
-
-#     return jsonify({"message": "Successfully applied for the job!"}), 201
-
-# @app.route('/applyjob', methods=['POST'])
-# def apply_job():
-#     try:
-#         data = request.get_json()  # Ensure JSON data is extracted properly
-#         print("Received Data:", data)  # Debugging log
-
-#         email = data.get("email")
-       
-#         company = data.get("company")
-#         role = data.get("role")
-
-#         if not email :
-#             return jsonify({"message": "Missing email or job_id"}), 400
-
-#         # Check if the user already applied for this job
-#         existing_application = appliedjobs_collection.find_one({
-#             "email": email,
-            
-#         })
-
-#         if existing_application:
-#             return jsonify({"message": "You have already applied for this job!"}), 409
-
-#         # Insert new job application
-#         new_application = {
-#             "email": email,
-           
-#             "company": company,
-#             "role": role,
-#             "applied_on": datetime.utcnow()
-#         }
-#         appliedjobs_collection.insert_one(new_application)
-
-#         return jsonify({"message": "Successfully applied for the job!"}), 201
-
-#     except Exception as e:
-#         print("Error processing request:", str(e))
-#         return jsonify({"message": "Server error"}), 500
-
-
-
+    
 @app.route('/applyjob', methods=['POST'])
 def apply_job():
     try:
@@ -753,6 +810,7 @@ def get_applied_jobs(email):
         print("Error fetching applied jobs:", str(e))
         return jsonify({"message": "Server error"}), 500
 
+<<<<<<< HEAD
 @app.route('/userappliedjobs', methods=['GET'])
 def getjobs():
     try:
@@ -769,3 +827,8 @@ if __name__ == '__main__':
 
 
 
+=======
+    
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
+>>>>>>> 20b215fc11e428770d2bc98b02af23885e8d5869
