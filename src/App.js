@@ -9,6 +9,7 @@ import EditProfile from "./pages/EditProfile";
 import AppliedJobs from "./pages/AppliedJobs";
 import Connections from "./pages/Connections";
 import Jobs from "./pages/Jobs";
+import UserJobDetails from "./pages/UserJobDetails";
 import './App.css';
 import RecruiterTable from "./pages/RecruitersTable";
 import JobForm from "./pages/JobForm";
@@ -103,6 +104,7 @@ function App() {
           <Route path="/recruiterslist" element={<RecruiterTable/>} />
           <Route path="/jobform" element={<JobForm />} />
           <Route path="/applyjob" element={<AppliedJobs />} />
+          <Route path="/userjobdetails" element={<UserJobDetails />} />
           
         </Routes>
         {/* <UserReports/> */}

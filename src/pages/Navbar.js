@@ -7,7 +7,9 @@ import { useContext } from "react";
 
 const Logoutuser = () => {
   localStorage.removeItem("LoggedInUser"); // Remove from localStorage
-  setCurrentUser(null); // Clear user from state
+  setCurrentUser(null); 
+  navigate("/");
+  // Clear user from state
 };
 
 const Navbar = () => {
