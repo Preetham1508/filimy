@@ -204,50 +204,156 @@ def get_profile():
         return jsonify({'error': 'User not found'})
 
 
+# @app.route('/editprofile', methods=['POST'])
+# def edprofile():
+#     data = request.get_json()
+#     print("Received Data:", data)  # Debugging: Check if data is received
+#     email = data.get('email')
+#     update_data = data.get('data')
+    
+#     if not email or not update_data:
+#         return jsonify({'error': 'Invalid request, missing email or data'}), 400
+
+#     update_data = {k: v for k, v in update_data.items() if v is not None}
+
+#     user_data = users_collection.find_one({'email': email})
+
+#     if not user_data:
+#         return jsonify({'error': 'User not found'}), 404
+
+#     # Ensure required fields exist
+#     for key in ['education', 'companies', 'skills']:
+#         if key not in user_data or not isinstance(user_data[key], list):
+#             user_data[key] = []
+
+#     for field, value in update_data.items():
+#         if field == "photo":
+#             user_data['photo'] = value
+#         elif field == "education":
+#             for edu in value:
+#                 if edu['graduatedyear'] != '':
+#                     if edu not in user_data['education']:
+#                         user_data['education'].append(edu)
+#         elif field == "companies":
+#             for company in value:
+#                 if company['name'] != '':
+#                     if company not in user_data['companies']:
+#                         user_data['companies'].append(company)
+#         elif field == "skills":
+#             if value:
+#                 for skill in value:
+#                     if skill.lower() not in map(str.lower, user_data['skills']):
+#                         user_data['skills'].append(skill)
+#         else:
+#             user_data[field] = value if value != '' else user_data.get(field)
+
+#     try:
+#         result = users_collection.update_one({'email': email}, {'$set': user_data})
+#         if result.modified_count == 0:
+#             return jsonify({'error': 'No profile found to update'}), 400
+#         return jsonify({'message': 'Profile updated successfully'}), 200
+#     except Exception as e:
+#         return jsonify({'error': f'An error occurred while updating the profile: {str(e)}'}), 500
+
+import requests
+
 @app.route('/editprofile', methods=['POST'])
 def edprofile():
     data = request.get_json()
+    print("Received Data:", data)  # Debugging: Check received data
+
     email = data.get('email')
     update_data = data.get('data')
+
+    if not email or not update_data:
+        return jsonify({'error': 'Invalid request, missing email or data'}), 400
+
     update_data = {k: v for k, v in update_data.items() if v is not None}
 
     user_data = users_collection.find_one({'email': email})
 
+    if not user_data:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Ensure required fields exist and follow the expected format
+    default_structure = {
+        "education": [],
+        "companies": [],
+        "skills": [],
+        "location": {"lat": "", "lon": "", "address": ""}
+    }
+
+    for key, default_value in default_structure.items():
+        if key not in user_data:
+            user_data[key] = default_value
+
     for field, value in update_data.items():
         if field == "photo":
-            # Ensure photo is a Base64 string
             user_data['photo'] = value
         elif field == "education":
             for edu in value:
-                if edu['graduatedyear'] != '':
-                    if edu not in user_data[field]:
-                        user_data[field].append(edu)
+                if edu.get('graduatedyear'):
+                    try:
+                        edu['graduatedyear'] = int(edu['graduatedyear'])  # Convert to int
+                    except ValueError:
+                        continue  # Skip if conversion fails
+                    if edu not in user_data['education']:
+                        user_data['education'].append(edu)
         elif field == "companies":
             for company in value:
-                if company['name'] != '':
-                    if company not in user_data[field]:
-                        user_data[field].append(company)
+                if company.get('name'):
+                    if 'experience' in company:
+                        try:
+                            company['experience'] = int(company['experience'])  # Convert to int
+                        except ValueError:
+                            continue  # Skip if conversion fails
+                    if company not in user_data['companies']:
+                        user_data['companies'].append(company)
         elif field == "skills":
-            if value != '':
+            if value:
                 for skill in value:
-                    if skill.lower() not in map(str.lower, user_data[field]):
-                        user_data[field].append(skill)
+                    if skill.lower() not in map(str.lower, user_data['skills']):
+                        user_data['skills'].append(skill)
+        elif field == "address":
+            location_data = get_coordinates_osm(value)
+            if "error" in location_data:
+                location_data = {"latitude": "18.9057181", "longitude": "78.5832738"}  # Default location
+            
+            user_data['location'] = {
+                "lat": f"{float(location_data['latitude']):.4f}",  # Round to 4 decimal places
+                "lon": f"{float(location_data['longitude']):.4f}",
+                "address": value
+            }
         else:
             user_data[field] = value if value != '' else user_data.get(field)
-
-    if not update_data:
-        return jsonify({'error': 'No valid fields to update'})
 
     try:
         result = users_collection.update_one({'email': email}, {'$set': user_data})
         if result.modified_count == 0:
-            return jsonify({'error': 'No profile found to update'})
-        return jsonify({'message': 'Profile updated successfully'})
+            return jsonify({'error': 'No profile found to update'}), 400
+        return jsonify({'message': 'Profile updated successfully'}), 200
     except Exception as e:
-        return jsonify({'error': f'An error occurred while updating the profile: {str(e)}'})
+        return jsonify({'error': f'An error occurred while updating the profile: {str(e)}'}), 500
 
 
+# Function to get coordinates from OpenStreetMap API
+def get_coordinates_osm(address):
+    if not address:
+        return {"error": "Address is required"}
     
+    url = f"https://nominatim.openstreetmap.org/search?q={address}&format=json&limit=1"
+    response = requests.get(url, headers={"User-Agent": "Mozilla/5.0"})
+    
+    if response.status_code == 200 and response.json():
+        location = response.json()[0]
+        return {
+            "latitude": f"{float(location['lat']):.4f}",  # Round lat to 4 decimal places
+            "longitude": f"{float(location['lon']):.4f}"  # Round lon to 4 decimal places
+        }
+    else:
+        return {"latitude": "18.9057181", "longitude": "78.5832738"}  # Default coordinates
+  
+
 import math
 from pymongo import MongoClient
 import time
@@ -325,10 +431,9 @@ def calculate_distances_for_all_users(main_user,users):
         #                               float(user['location']['lat']), float(user['location']['lon']))
         priority.append(calculate_priority(main_user, user))
         des=[float(user['location']['lat']),float(user['location']['lon'])]
+        distances.append(haversine_distance(origin[0],origin[1],des[0],des[1]))        
+        print(len(distances),len(priority))
 
-        distances.append(haversine_distance(origin[0],origin[1],des[0],des[1]))
-        
-  
        
     return distances,priority
 
@@ -337,8 +442,8 @@ def gmain(email):
     # start_time = time.time()
 
     # MongoDB connection
-    client = MongoClient('mongodb+srv://suryatejaaiproject:ZgQ7ACyPHcVUyHW2@cluster0.atwu66p.mongodb.net/')
-    db = client['RealTimeDataAnalysis']
+    client = MongoClient('mongodb+srv://vinaysunkara:vinaysunkara@cluster0.snpbn.mongodb.net/?retryWrites=true&w=majority&tlsAllowInvalidCertificates=true')
+    db = client['RealTimeDataAnalysiss']
     collection = db['profiles_ind']
     
     # Fetch all users
@@ -347,10 +452,13 @@ def gmain(email):
     main_user = collection.find_one({'email': email})
     # print(main_user)
     # main_user={"_id":{"$oid":"672282bc1e5d932bd8e85d71"},"firstname":"Anika","lastname":"Gupta","education":[{"degree":"B.Tech Computer Science","institution":"Indian Institute of Technology Delhi","graduatedyear":{"$numberInt":"2018"}},{"degree":"M.Tech Computer Science","institution":"Indian Institute of Technology Bombay","graduatedyear":{"$numberInt":"2020"}},{"degree":"PhD Computer Science","institution":"Indian Institute of Science","graduatedyear":{"$numberInt":"2024"}}],"companies":[{"name":"Google India","position":"Software Engineer","experience":{"$numberInt":"3"}},{"name":"Amazon India","position":"Senior Software Engineer","experience":{"$numberInt":"2"}},{"name":"Microsoft India","position":"Software Development Manager","experience":{"$numberInt":"1"}}],"skills":["Java","Python","Cloud Computing","AWS","Azure","DevOps"],"location":{"lat":"28.6139","lon":"77.2090","address":"New Delhi"}}
+    if not main_user:  # If user is not found, return an empty list or error
+        print(f"No user found for email: {email}")
+        return []
+    valid_users = [user for user in users if "location" in user]
+    distances,priority = calculate_distances_for_all_users(main_user,valid_users)
 
-    distances,priority = calculate_distances_for_all_users(main_user,users)
-
-    # print(len(distances),len(priority),len(users))
+    print(len(distances),len(priority),len(users))
 
     sorted_users=[]
     for i in range(len(users)-1):
@@ -370,19 +478,48 @@ def gmain(email):
 
 
 from bson import ObjectId
+# @app.route('/usersrec', methods=['POST'])
+# def fun():
+#     data = request.json  
+#     email = data['params']['email']
+#     result = gmain(email)  # Assuming `gmain(email)` returns a list of MongoDB documents
+    
+#     # Convert each document's ObjectId to a string
+#     for doc in result[:10]:  # Limit to 10 results
+#         if "_id" in doc:
+#             doc["_id"] = str(doc["_id"])
+    
+#     return jsonify(result[:10])  # Return only the first 10 results
+
 @app.route('/usersrec', methods=['POST'])
 def fun():
-    data = request.json  
-    email = data['params']['email']
-    result = gmain(email)  # Assuming `gmain(email)` returns a list of MongoDB documents
-    
-    # Convert each document's ObjectId to a string
-    for doc in result[:10]:  # Limit to 10 results
-        if "_id" in doc:
-            doc["_id"] = str(doc["_id"])
-    
-    return jsonify(result[:10])  # Return only the first 10 results
+    try:
+        data = request.json
+        print("Received Data:", data)  # Debugging
+        
+        if not data or 'params' not in data or 'email' not in data['params']:
+            return jsonify({"error": "Invalid request format"}), 400
+        
+        email = data['params']['email']
+        print("Email:", email)
 
+        result = gmain(email)  # Ensure gmain(email) is not throwing an error
+        print("Raw result:", result)
+
+        if not isinstance(result, list):
+            return jsonify({"error": "gmain did not return a list"}), 500
+
+        # Convert ObjectId to string
+        for doc in result[:10]:  
+            if "_id" in doc:
+                doc["_id"] = str(doc["_id"])
+        
+        print("Processed result:", result[:10])  # Debugging
+        return jsonify(result[:10])  
+
+    except Exception as e:
+        print("Error:", str(e))  # Print full error to backend logs
+        return jsonify({"error": str(e)}), 500
 
 g_apikey = "AIzaSyA2vsEVR7to4-1aUzEcMuTlTXG5-UaJRII"
 genai.configure(api_key=g_apikey)
