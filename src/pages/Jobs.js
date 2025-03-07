@@ -140,6 +140,7 @@
 //         {loadingCompany && (
 //           <div className="loading-spinner">Fetching {loadingCompany} jobs...</div>
 //         )}
+
 //         {companies.map((company) => (
 //           onlineJobs[company]?.length > 0 && (
 //             <div key={company} className="job-list">
@@ -211,26 +212,6 @@ const Jobs = () => {
     setExpandedIndex(expandedIndex === index ? null : index);
   };
 
-  const applyForJob = async (job) => {
-    const email = currentuser?.email;
-    if (!email) {
-      alert("User is not logged in.");
-      return;
-    }
-
-    try {
-      const response = await axios.post(`http://127.0.0.1:5000/applyjob`, {
-        email,
-        company: job.companyName,
-        role: job.role
-      });
-      alert(response.data.message);
-    } catch (error) {
-      console.error("Error applying for job:", error.response?.data || error.message);
-      alert("Failed to apply for job");
-    }
-  };
-
   const fetchOnlineJobs = async (company) => {
     if (expandedCompany === company) {
       setExpandedCompany(null);
@@ -285,7 +266,6 @@ const Jobs = () => {
                     <p><strong>Job Posting Date:</strong> {profile.jobPostingDate}</p>
                     <p><strong>Application Deadline:</strong> {profile.applicationDeadline}</p>
                   </div>
-                  <button onClick={() => applyForJob(profile)} className="apply-button"> Apply </button>
                 </>
               )}
             </div>
