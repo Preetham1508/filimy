@@ -810,6 +810,25 @@ def get_applied_jobs(email):
         print("Error fetching applied jobs:", str(e))
         return jsonify({"message": "Server error"}), 500
 
+<<<<<<< HEAD
+@app.route('/userappliedjobs', methods=['GET'])
+def getjobs():
+    try:
+        applied_jobs = list(appliedjobs_collection.find({}, {"_id": 0}))  # Remove _id to prevent errors
+        return jsonify(applied_jobs), 200
+    except Exception as e:
+        print("Error fetching applied jobs:", str(e))
+        return jsonify({"message": "Server error"}), 500
+
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+=======
     
 if __name__ == '__main__':
     socketio.run(app, debug=True)
+>>>>>>> 20b215fc11e428770d2bc98b02af23885e8d5869

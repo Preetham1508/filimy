@@ -78,6 +78,12 @@ import "./Navbar.css";
 import { logincontext } from "../contexts/Logincontext";
 import { useContext } from "react";
 
+
+const Logoutuser = () => {
+  localStorage.removeItem("LoggedInUser"); // Remove from localStorage
+  setCurrentUser(null); // Clear user from state
+};
+
 const Navbar = () => {
   const [currentuser, loginerror, UserloginStatus, Loginuser, isUser, isRecruiter, isAdmin] = useContext(logincontext);
   const navigate = useNavigate(); // ✅ Place it inside the component
