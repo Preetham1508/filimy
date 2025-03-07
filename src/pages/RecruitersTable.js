@@ -20,7 +20,7 @@ function RecruiterTable() {
 
   const handleAccept = async (id) => {
     try {
-        console.log("HIiiiiiiiiii");
+        //console.log("HIiiiiiiiiii");
       await axios.post(`http://127.0.0.1:5000/recruiters/${id}/accept`);
       fetchRecruiters(); // Refresh the list after accepting
     } catch (error) {
